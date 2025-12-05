@@ -5,7 +5,7 @@
   "description": "Find three cards that form a \"set\" — for each feature (shape, color, number, shading), the three cards must be all the same or all different.",
   "visibility": "public",
   "authors": {
-    "display_name": "e cards to select. Race the clock. Score points. Go fast."
+    "display_name": "Set: Find Sets!"
   },
   "dependencies": [
     {
