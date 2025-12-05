@@ -39,10 +39,10 @@ CATEGORY_3 = ["1", "2", "3"]  # count
 CATEGORY_4 = ["solid", "striped", "open"]  # fill
 
 # Grid layout
-CARD_WIDTH = 90
+CARD_WIDTH = 76
 CARD_HEIGHT = 60
 CARD_MARGIN = 10
-GRID_COLS = 3
+GRID_COLS = 4
 GRID_ROWS = 3
 GRID_START_X = (WIDTH - (CARD_WIDTH * GRID_COLS + CARD_MARGIN * (GRID_COLS - 1))) // 2
 GRID_START_Y = (HEIGHT - (CARD_HEIGHT * GRID_ROWS + CARD_MARGIN * (GRID_ROWS - 1))) // 2
@@ -205,7 +205,7 @@ class GameBoard:
         return deck
 
     def _deal_initial_cards(self):
-        """Deal 9 cards to fill the board, ensuring at least one valid set exists."""
+        """Deal 12 cards to fill the board, ensuring at least one valid set exists."""
         for row in range(GRID_ROWS):
             for col in range(GRID_COLS):
                 if self.deck:
