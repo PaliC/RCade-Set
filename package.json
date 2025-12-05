@@ -1,0 +1,21 @@
+{
+    "name": "set",
+    "private": false,
+    "version": "1.0.0",
+    "description": "Find three cards that form a &quot;set&quot; — for each feature (shape, color, number, shading), the three cards must be all the same or all different.",
+    "type": "module",
+    "scripts": {
+        "dev": "concurrently \"vite --port 5173 --strictPort\" \"rcade dev http://localhost:5173\"",
+        "build": "vite build"
+    },
+    "devDependencies": {
+        "@rcade/vite-plugins": "0.1.0",
+        "concurrently": "^9.0.0",
+        "rcade": "^0.0.38",
+        "vite": "^7.2.4"
+    },
+    "dependencies": {
+        "@rcade/plugin-input-classic": "^0.2.1",
+        "pyodide": "^0.27.0"
+    }
+}
