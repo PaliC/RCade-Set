@@ -12,7 +12,7 @@ CATEGORY_3 = ["1", "2", "3"]
 CATEGORY_4 = ["solid", "striped", "open"]
 
 GRID_ROWS = 3
-GRID_COLS = 3
+GRID_COLS = 4
 
 
 class Card:
@@ -117,12 +117,12 @@ class TestSetGuarantee:
         assert has_valid_set(cards)
 
     def test_initial_deal_has_valid_set(self):
-        """Test that initial 9-card deal always produces a valid set."""
+        """Test that initial 12-card deal always produces a valid set."""
         for seed in range(100):
             random.seed(seed)
             deck = create_deck()
             random.shuffle(deck)
-            cards = [deck.pop() for _ in range(9)]
+            cards = [deck.pop() for _ in range(12)]
             ensure_valid_set_exists(cards, deck)
             assert has_valid_set(cards), f"No valid set found with seed {seed}"
 
@@ -132,7 +132,7 @@ class TestSetGuarantee:
             random.seed(seed)
             deck = create_deck()
             random.shuffle(deck)
-            cards = [deck.pop() for _ in range(9)]
+            cards = [deck.pop() for _ in range(12)]
             ensure_valid_set_exists(cards, deck)
 
             # Simulate finding and clearing a set (replace 3 cards)
@@ -140,7 +140,7 @@ class TestSetGuarantee:
                 if len(deck) < 3:
                     break
                 # Replace 3 random cards
-                indices = random.sample(range(9), 3)
+                indices = random.sample(range(12), 3)
                 for i in indices:
                     if deck:
                         cards[i] = deck.pop()
@@ -153,7 +153,7 @@ class TestSetGuarantee:
             random.seed(seed)
             deck = create_deck()
             random.shuffle(deck)
-            cards = [deck.pop() for _ in range(9)]
+            cards = [deck.pop() for _ in range(12)]
 
             # Even if initial deal has no set, ensure_valid_set_exists should fix it
             ensure_valid_set_exists(cards, deck)
@@ -166,7 +166,7 @@ class TestSetGuarantee:
         random.shuffle(deck)
 
         # Draw most of the deck
-        cards = [deck.pop() for _ in range(9)]
+        cards = [deck.pop() for _ in range(12)]
         while len(deck) > 5:
             deck.pop()
 
@@ -180,7 +180,7 @@ class TestSetGuarantee:
             random.seed(game * 1000)
             deck = create_deck()
             random.shuffle(deck)
-            cards = [deck.pop() for _ in range(9)]
+            cards = [deck.pop() for _ in range(12)]
             ensure_valid_set_exists(cards, deck)
 
             sets_found = 0
@@ -188,7 +188,7 @@ class TestSetGuarantee:
                 assert has_valid_set(cards), f"Game {game}, set {sets_found}: no valid set"
 
                 # Find and remove a valid set
-                for c1, c2, c3 in combinations(range(9), 3):
+                for c1, c2, c3 in combinations(range(12), 3):
                     if cards[c1] and cards[c2] and cards[c3]:
                         if cards[c1].check_if_set(cards[c2], cards[c3]):
                             # Replace these cards
