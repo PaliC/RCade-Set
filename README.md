@@ -1,6 +1,6 @@
 # Set
 
-Find three cards that form a &quot;set&quot; — for each feature (shape, color, number, shading), the three cards must be all the same or all different.
+Find three cards that form a &quot;set&quot; — for each feature (shape, color, number, shading), the three cards must be all the same or all different. This is for RCade an awesome project by [Frank Chiarulli Jr.](https://github.com/fcjr) you can read about below :)
 
 ## About RCade
 
