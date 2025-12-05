@@ -138,7 +138,7 @@ class Card:
 
 
 class GameBoard:
-    def __init__(self):
+    def __init__(self, initial_inputs=None):
         self.deck = self._create_deck()
         random.shuffle(self.deck)
         self.cards = [[None for _ in range(GRID_COLS)] for _ in range(GRID_ROWS)]
@@ -146,7 +146,11 @@ class GameBoard:
         self.cursor_row = 0
         self.cursor_col = 0
         self._deal_initial_cards()
-        self._prev_inputs = {"up": False, "down": False, "left": False, "right": False, "a": False}
+        # Initialize with current input state to prevent accidental selection on first frame
+        if initial_inputs:
+            self._prev_inputs = {k: initial_inputs.get(k, False) for k in ["up", "down", "left", "right", "a"]}
+        else:
+            self._prev_inputs = {"up": False, "down": False, "left": False, "right": False, "a": False}
         self.score = 0
         self.flash_color = None  # None, FLASH_GREEN, or FLASH_RED
         self.flash_timer = 0
@@ -389,7 +393,7 @@ class Game:
             if self._edge_triggered("a", inputs) or self._edge_triggered("start", inputs):
                 if self.menu_selection == 0:
                     self.state = self.STATE_PLAYING
-                    self.board = GameBoard()
+                    self.board = GameBoard(inputs["p1"])
                 else:
                     self.state = self.STATE_HELP
             self._update_prev_inputs(inputs)
@@ -404,7 +408,7 @@ class Game:
 
         if self.state == self.STATE_GAME_OVER:
             if self._edge_triggered("start", inputs) or self._edge_triggered("a", inputs):
-                self.board = GameBoard()
+                self.board = GameBoard(inputs["p1"])
                 self.state = self.STATE_PLAYING
             self._update_prev_inputs(inputs)
             return
