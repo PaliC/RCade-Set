@@ -158,6 +158,9 @@ class GameBoard:
         self.flash_positions = set()  # Positions to flash
         self.game_over = False  # True when no valid sets and deck is empty
         self.debug_mode = True
+        # Card flip animation state
+        self.flip_animations = {}  # {(row, col): {"old_card": Card, "new_card": Card, "progress": float}}
+        self.flip_duration = FPS // 3  # ~20 frames for snappy flip
         self._print_valid_sets()
 
     def _print_valid_sets(self):
@@ -251,6 +254,15 @@ class GameBoard:
                 self.flash_color = None
                 self.flash_positions.clear()
 
+        # Update flip animations
+        completed = []
+        for pos, anim in self.flip_animations.items():
+            anim["progress"] += 1.0 / self.flip_duration
+            if anim["progress"] >= 1.0:
+                completed.append(pos)
+        for pos in completed:
+            del self.flip_animations[pos]
+
         # Cursor movement (edge-triggered)
         if inputs["up"] and not self._prev_inputs["up"]:
             self.cursor_row = (self.cursor_row - 1) % GRID_ROWS
@@ -288,12 +300,16 @@ class GameBoard:
             # Valid set
             self.flash_color = FLASH_GREEN
             self.score += 1
-            # Replace cards with new ones from deck
+            # Start flip animations for each position (replacement happens when animation completes)
             for r, c in positions:
-                if self.deck:
-                    self.cards[r][c] = self.deck.pop()
-                else:
-                    self.cards[r][c] = None
+                old_card = self.cards[r][c]
+                new_card = self.deck.pop() if self.deck else None
+                self.flip_animations[(r, c)] = {
+                    "old_card": old_card,
+                    "new_card": new_card,
+                    "progress": 0.0
+                }
+                self.cards[r][c] = new_card  # Update immediately for game logic
             self._ensure_valid_set_exists()
             self._print_valid_sets()
             # Check for game over: no valid sets and deck is empty
@@ -309,11 +325,34 @@ class GameBoard:
         """Draw the game board with all cards."""
         for row in range(GRID_ROWS):
             for col in range(GRID_COLS):
-                card = self.cards[row][col]
-                if card is None:
-                    continue
+                pos = (row, col)
+                base_rect = self.get_card_rect(row, col)
 
-                rect = self.get_card_rect(row, col)
+                # Check if this card is flipping
+                if pos in self.flip_animations:
+                    anim = self.flip_animations[pos]
+                    progress = anim["progress"]
+                    # First half: old card shrinks, second half: new card grows
+                    if progress < 0.5:
+                        card = anim["old_card"]
+                        scale = 1.0 - (progress * 2)  # 1.0 -> 0.0
+                    else:
+                        card = anim["new_card"]
+                        scale = (progress - 0.5) * 2  # 0.0 -> 1.0
+                    if card is None:
+                        continue
+                    # Calculate scaled rect centered on original position
+                    scaled_width = int(CARD_WIDTH * scale)
+                    if scaled_width < 2:
+                        continue  # Skip drawing when too thin
+                    x_offset = (CARD_WIDTH - scaled_width) // 2
+                    rect = pygame.Rect(base_rect.x + x_offset, base_rect.y, scaled_width, CARD_HEIGHT)
+                else:
+                    card = self.cards[row][col]
+                    if card is None:
+                        continue
+                    rect = base_rect
+
                 is_selected = (row, col) in self.selected
                 is_cursor = (row == self.cursor_row and col == self.cursor_col)
 
@@ -336,7 +375,7 @@ class GameBoard:
                 else:
                     pygame.draw.rect(screen, CARD_BORDER, rect, 1)
 
-                # Draw card shapes
+                # Draw card shapes (use full rect for shape positioning)
                 card.draw(screen, rect.x, rect.y, rect.width, rect.height)
 
 
