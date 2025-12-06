@@ -234,13 +234,9 @@ class GameBoard:
         if not self.debug_mode:
             return
         valid_sets = self._get_all_valid_sets()
-        print(f"\n=== Valid sets ({len(valid_sets) // 6}): ===")  # Divide by 6 to account for permutations
-        seen = set()
+        print(f"\n=== Valid sets ({len(valid_sets)}): ===")
         for s in valid_sets:
-            key = tuple(sorted(s))
-            if key not in seen:
-                seen.add(key)
-                print(f"  {s[0]} + {s[1]} + {s[2]}")
+            print(f"  {s[0]} + {s[1]} + {s[2]}")
 
     def _get_all_valid_sets(self):
         """Get all valid sets on the board."""
@@ -344,7 +340,7 @@ class GameBoard:
             pos = (self.cursor_row, self.cursor_col)
             if pos in self.selected:
                 self.selected.remove(pos)
-            elif len(self.selected) < 3:
+            elif len(self.selected) < 3 and self.cards[self.cursor_row][self.cursor_col] is not None:
                 self.selected.add(pos)
                 # Check if we have exactly 3 cards selected
                 if len(self.selected) == 3:
@@ -377,6 +373,10 @@ class GameBoard:
                 }
                 self.cards[r][c] = new_card  # Update immediately for game logic
             self._ensure_valid_set_exists()
+            # Update animations to reflect any swaps made by _ensure_valid_set_exists
+            for r, c in positions:
+                if (r, c) in self.flip_animations:
+                    self.flip_animations[(r, c)]["new_card"] = self.cards[r][c]
             self._print_valid_sets()
             # Check for game over: no valid sets and deck is empty
             if not self.deck and not self._has_valid_set():
