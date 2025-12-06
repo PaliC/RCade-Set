@@ -16,27 +16,136 @@ FPS = 60
 # Colors
 BACKGROUND = (26, 26, 46)
 WHITE = (255, 255, 255)
-CARD_BG = (240, 240, 235)
-CARD_BG_HOVER = (200, 200, 195)
-CARD_BG_SELECTED = (255, 255, 250)
-CARD_BORDER = (60, 60, 60)
+CARD_BG = (26, 26, 46)  # Dark card background for 8-bit look
+CARD_BG_HOVER = (40, 40, 70)
+CARD_BG_SELECTED = (50, 50, 80)
+CARD_BORDER = (74, 74, 106)
 SELECTED_BORDER = (255, 215, 0)
 CURSOR_COLOR = (100, 200, 255)
 FLASH_GREEN = (50, 205, 50)
 FLASH_RED = (220, 50, 50)
 
-# Visual mappings for drawing (category values -> visual representation)
+# 8-bit color palette for shapes
 COLOR_MAP = {
-    "red": (220, 60, 60),
-    "green": (60, 180, 60),
-    "blue": (60, 100, 220),
+    "red": (230, 57, 70),
+    "green": (42, 157, 143),
+    "purple": (123, 44, 191),
 }
 
 # Categories
-CATEGORY_1 = ["circle", "square", "triangle"]  # shape
-CATEGORY_2 = ["red", "green", "blue"]  # color
+CATEGORY_1 = ["diamond", "oval", "squiggle"]  # shape
+CATEGORY_2 = ["red", "green", "purple"]  # color
 CATEGORY_3 = ["1", "2", "3"]  # count
-CATEGORY_4 = ["solid", "striped", "open"]  # fill
+CATEGORY_4 = ["solid", "striped", "empty"]  # fill
+
+# Pixel art shape definitions (16x16 grids, scaled down for RCade)
+PIXEL_SHAPES = {
+    'diamond': [
+        '........XX......',
+        '.......XXXX.....',
+        '......XXXXXX....',
+        '.....XXXXXXXX...',
+        '....XXXXXXXXXX..',
+        '...XXXXXXXXXXXX.',
+        '..XXXXXXXXXXXXXX',
+        '.XXXXXXXXXXXXXXX',
+        '.XXXXXXXXXXXXXXX',
+        '..XXXXXXXXXXXXXX',
+        '...XXXXXXXXXXXX.',
+        '....XXXXXXXXXX..',
+        '.....XXXXXXXX...',
+        '......XXXXXX....',
+        '.......XXXX.....',
+        '........XX......',
+    ],
+    'oval': [
+        '.....XXXXXX.....',
+        '...XXXXXXXXXX...',
+        '..XXXXXXXXXXXX..',
+        '.XXXXXXXXXXXXXX.',
+        '.XXXXXXXXXXXXXX.',
+        'XXXXXXXXXXXXXXXX',
+        'XXXXXXXXXXXXXXXX',
+        'XXXXXXXXXXXXXXXX',
+        'XXXXXXXXXXXXXXXX',
+        'XXXXXXXXXXXXXXXX',
+        'XXXXXXXXXXXXXXXX',
+        '.XXXXXXXXXXXXXX.',
+        '.XXXXXXXXXXXXXX.',
+        '..XXXXXXXXXXXX..',
+        '...XXXXXXXXXX...',
+        '.....XXXXXX.....',
+    ],
+    'squiggle': [
+        '....XXXXX.......',
+        '..XXXXXXXXX.....',
+        '.XXXXXXXXXXX....',
+        '.XXXXXXXXXXXX...',
+        'XXXXXXXXXXXXX...',
+        'XXXXXXXXXXXXXX..',
+        '.XXXXXXXXXXXXX..',
+        '..XXXXXXXXXXXXX.',
+        '..XXXXXXXXXXXXX.',
+        '..XXXXXXXXXXXXXX',
+        '...XXXXXXXXXXXXX',
+        '....XXXXXXXXXXXX',
+        '....XXXXXXXXXXX.',
+        '.....XXXXXXXXX..',
+        '.......XXXXX....',
+        '................',
+    ],
+}
+
+# Shape surface cache (populated at init)
+_shape_cache = {}
+
+
+def _is_edge_pixel(shape_data, x, y):
+    """Check if a pixel is on the edge of the shape."""
+    if shape_data[y][x] != 'X':
+        return False
+    for nx, ny in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]:
+        if nx < 0 or nx >= 16 or ny < 0 or ny >= 16:
+            return True
+        if shape_data[ny][nx] == '.':
+            return True
+    return False
+
+
+def _create_shape_surface(shape_name, color_name, fill):
+    """Create a pygame surface for a single shape with given color and fill."""
+    shape_data = PIXEL_SHAPES[shape_name]
+    color = COLOR_MAP[color_name]
+
+    # Create surface (16x16 pixels, no scaling needed for RCade's small display)
+    surface = pygame.Surface((16, 16), pygame.SRCALPHA)
+
+    for py in range(16):
+        for px in range(16):
+            if shape_data[py][px] == 'X':
+                should_draw = False
+                if fill == 'solid':
+                    should_draw = True
+                elif fill == 'striped':
+                    should_draw = (py % 2 == 0)
+                elif fill == 'empty':
+                    should_draw = _is_edge_pixel(shape_data, px, py)
+
+                if should_draw:
+                    surface.set_at((px, py), color)
+
+    return surface
+
+
+def init_shape_cache():
+    """Pre-generate all shape/color/fill combinations."""
+    global _shape_cache
+    for shape in CATEGORY_1:
+        for color in CATEGORY_2:
+            for fill in CATEGORY_4:
+                key = (shape, color, fill)
+                _shape_cache[key] = _create_shape_surface(shape, color, fill)
+
 
 # Grid layout
 CARD_WIDTH = 76
@@ -71,70 +180,27 @@ class Card:
         return all(check_attribute(a, b, c) for a, b, c in zip(attrs, other1_attrs, other2_attrs))
 
     def draw(self, screen, x, y, width, height):
-        """Draw this card's shapes at the given position."""
-        color = COLOR_MAP.get(self.category2, WHITE)
+        """Draw this card's shapes using cached pixel art surfaces."""
         count = int(self.category3)
         shape = self.category1
+        color = self.category2
         fill = self.category4
 
-        shape_width = 20
-        shape_height = 30
-        spacing = 24
-        total_width = count * shape_width + (count - 1) * (spacing - shape_width)
+        # Get cached surface
+        surface = _shape_cache.get((shape, color, fill))
+        if surface is None:
+            return
+
+        # Layout: shapes arranged horizontally
+        shape_size = 16
+        spacing = 20
+        total_width = count * shape_size + (count - 1) * (spacing - shape_size)
         start_x = x + (width - total_width) // 2
-        center_y = y + height // 2
+        center_y = y + (height - shape_size) // 2
 
         for i in range(count):
             sx = start_x + i * spacing
-            sy = center_y - shape_height // 2
-            self._draw_shape(screen, shape, fill, sx, sy, shape_width, shape_height, color)
-
-    def _draw_shape(self, screen, shape, fill, x, y, w, h, color):
-        """Draw a single shape with the given fill style."""
-        if shape == "circle":
-            rect = pygame.Rect(x, y, w, h)
-            self._draw_filled(screen, "ellipse", rect, fill, color)
-        elif shape == "square":
-            rect = pygame.Rect(x + 2, y + 4, w - 4, h - 8)
-            self._draw_filled(screen, "rect", rect, fill, color)
-        elif shape == "triangle":
-            points = [(x + w // 2, y), (x + w, y + h), (x, y + h)]
-            self._draw_filled(screen, "polygon", points, fill, color)
-
-    def _draw_filled(self, screen, shape_type, shape_data, fill, color):
-        """Draw shape with the specified fill style."""
-        if fill == "solid":
-            if shape_type == "polygon":
-                pygame.draw.polygon(screen, color, shape_data)
-            elif shape_type == "ellipse":
-                pygame.draw.ellipse(screen, color, shape_data)
-            elif shape_type == "rect":
-                pygame.draw.rect(screen, color, shape_data)
-        elif fill == "open":
-            if shape_type == "polygon":
-                pygame.draw.polygon(screen, color, shape_data, 2)
-            elif shape_type == "ellipse":
-                pygame.draw.ellipse(screen, color, shape_data, 2)
-            elif shape_type == "rect":
-                pygame.draw.rect(screen, color, shape_data, 2)
-        elif fill == "striped":
-            # Draw outline + horizontal stripes
-            if shape_type == "polygon":
-                pygame.draw.polygon(screen, color, shape_data, 2)
-                min_y = min(p[1] for p in shape_data)
-                max_y = max(p[1] for p in shape_data)
-                min_x = min(p[0] for p in shape_data)
-                max_x = max(p[0] for p in shape_data)
-            elif shape_type == "ellipse":
-                pygame.draw.ellipse(screen, color, shape_data, 2)
-                min_y, max_y = shape_data.top, shape_data.bottom
-                min_x, max_x = shape_data.left, shape_data.right
-            elif shape_type == "rect":
-                pygame.draw.rect(screen, color, shape_data, 2)
-                min_y, max_y = shape_data.top, shape_data.bottom
-                min_x, max_x = shape_data.left, shape_data.right
-            for stripe_y in range(int(min_y) + 4, int(max_y), 6):
-                pygame.draw.line(screen, color, (min_x + 2, stripe_y), (max_x - 2, stripe_y), 1)
+            screen.blit(surface, (sx, center_y))
 
 
 class GameBoard:
@@ -349,6 +415,7 @@ class Game:
 
     def __init__(self):
         pygame.init()
+        init_shape_cache()  # Pre-generate pixel art shapes
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("Set")
         self.clock = pygame.time.Clock()
@@ -454,9 +521,9 @@ class Game:
             "  ALL THE SAME  or  ALL DIFFERENT",
             "",
             "Example valid SET:",
-            "  1 red solid circle",
-            "  2 red solid squares",
-            "  3 red solid triangles",
+            "  1 red solid diamond",
+            "  2 red solid ovals",
+            "  3 red solid squiggles",
             "  (same color/fill, diff count/shape)",
         ]
 
