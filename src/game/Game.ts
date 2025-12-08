@@ -287,14 +287,9 @@ export class Game {
     ctx.fillText("Congratulations!", WIDTH / 2, HEIGHT / 2 - 40);
     ctx.fillText("You WON!", WIDTH / 2, HEIGHT / 2 - 10);
 
-    // Score
-    ctx.fillStyle = COLORS.white;
-    ctx.font = "20px monospace";
-    ctx.fillText(`Final Score: ${this.board.score} sets`, WIDTH / 2, HEIGHT / 2 + 25);
-
     // Restart hint
     ctx.fillStyle = COLORS.textMuted;
-    ctx.font = "14px monospace";
+    ctx.font = "20px monospace";
     ctx.fillText("Press A or START to play again", WIDTH / 2, HEIGHT / 2 + 55);
   }
 
