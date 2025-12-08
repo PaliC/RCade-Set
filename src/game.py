@@ -584,11 +584,9 @@ class Game:
     def _draw_game_over(self):
         """Draw the game over/congratulations screen."""
         text1 = self.font_large.render("Congratulations You WON!", True, SELECTED_BORDER)
-        text2 = self.font_small.render(f"Final Score: {self.board.score} sets", True, WHITE)
-        text3 = self.font_tiny.render("Press A or START to play again", True, (150, 150, 150))
+        text2 = self.font_tiny.render("Press A or START to play again", True, (150, 150, 150))
         self.screen.blit(text1, text1.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 30)))
         self.screen.blit(text2, text2.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 10)))
-        self.screen.blit(text3, text3.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 40)))
 
     def _draw_playing(self):
         """Draw the game board during play."""
