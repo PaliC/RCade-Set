@@ -119,9 +119,9 @@ export class Game {
     // Selection
     if (this.edgeTriggered("a", inputs) || this.edgeTriggered("start", inputs)) {
       if (this.menuSelection === 0) {
-        this.startGame("single");
+        this.startGame("single", inputs);
       } else if (this.menuSelection === 1) {
-        this.startGame("two_player");
+        this.startGame("two_player", inputs);
       } else {
         this.state = "help";
       }
@@ -130,7 +130,7 @@ export class Game {
     this.updatePrevInputs(inputs);
   }
 
-  private startGame(mode: GameMode): void {
+  private startGame(mode: GameMode, inputs: GameInput): void {
     this.gameMode = mode;
 
     // Create a new board
@@ -139,13 +139,16 @@ export class Game {
     // Create appropriate strategy
     if (mode === "single") {
       this.modeStrategy = new SinglePlayerMode(this.board);
+      this.modeStrategy.init();
     } else {
-      this.modeStrategy = new TwoPlayerMode(this.board);
+      const twoPlayerMode = new TwoPlayerMode(this.board);
+      // Initialize with current inputs to prevent menu A press from triggering declaration
+      twoPlayerMode.initWithInputs(inputs);
+      this.modeStrategy = twoPlayerMode;
     }
 
     // Inject strategy into board
     this.board.setModeStrategy(this.modeStrategy);
-    this.modeStrategy.init();
 
     this.state = "playing";
   }

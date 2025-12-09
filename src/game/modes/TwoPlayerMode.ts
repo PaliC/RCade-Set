@@ -59,6 +59,19 @@ export class TwoPlayerMode implements GameModeStrategy {
     };
   }
 
+  /**
+   * Initialize with current inputs to prevent the menu A press from triggering declaration
+   */
+  initWithInputs(inputs: GameInput): void {
+    // Position cursors at different starting spots
+    this.player1.cursorPosition = { row: 0, col: 0 };
+    this.player2.cursorPosition = { row: GRID_ROWS - 1, col: GRID_COLS - 1 };
+
+    // Initialize previous inputs to current state to prevent instant declaration
+    this.prevP1 = { ...inputs.p1 };
+    this.prevP2 = { ...inputs.p2 };
+  }
+
   init(): void {
     // Position cursors at different starting spots
     this.player1.cursorPosition = { row: 0, col: 0 };
@@ -251,12 +264,14 @@ export class TwoPlayerMode implements GameModeStrategy {
       {
         position: this.player1.cursorPosition,
         color: PLAYER_COLORS.p1.cursor,
-        active: this.phase === "open" || this.activePlayer === 1,
+        // Only active when this player is declaring
+        active: this.phase === "declaring" && this.activePlayer === 1,
       },
       {
         position: this.player2.cursorPosition,
         color: PLAYER_COLORS.p2.cursor,
-        active: this.phase === "open" || this.activePlayer === 2,
+        // Only active when this player is declaring
+        active: this.phase === "declaring" && this.activePlayer === 2,
       },
     ];
   }

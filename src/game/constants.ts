@@ -118,7 +118,7 @@ export const SHAPE_SIZE = 16;
 export const SHAPE_SPACING = 20;
 
 // Two-player mode constants
-export const DECLARATION_TIMEOUT_FRAMES = 198; // 3.3 seconds at 60fps
+export const DECLARATION_TIMEOUT_FRAMES = 312; // 5.2 seconds at 60fps
 export const STARTING_LIVES = 3;
 export const HUD_FLASH_DURATION = 30; // 0.5s for life loss flash
 
