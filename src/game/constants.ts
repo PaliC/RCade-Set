@@ -116,3 +116,27 @@ export const PIXEL_SHAPES: Record<Shape, string[]> = {
 // Shape size
 export const SHAPE_SIZE = 16;
 export const SHAPE_SPACING = 20;
+
+// Two-player mode constants
+export const DECLARATION_TIMEOUT_FRAMES = 198; // 3.3 seconds at 60fps
+export const STARTING_LIVES = 3;
+export const HUD_FLASH_DURATION = 30; // 0.5s for life loss flash
+
+// Player colors for two-player mode
+export const PLAYER_COLORS = {
+  p1: {
+    cursor: "#3b82f6", // blue
+    selection: "#60a5fa",
+  },
+  p2: {
+    cursor: "#f97316", // orange
+    selection: "#fb923c",
+  },
+} as const;
+
+// Life icons
+export const LIFE_ICON = "\u2665"; // ♥
+export const EMPTY_LIFE_ICON = "\u2661"; // ♡
+
+// Countdown color (red)
+export const COUNTDOWN_COLOR = "#e63946";

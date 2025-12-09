@@ -3,20 +3,22 @@
  */
 
 import { GameBoard } from "./GameBoard";
-import type { GameState, GameInput } from "./types";
+import type { GameState, GameInput, GameMode } from "./types";
 import { shapeRenderer } from "./ShapeRenderer";
+import { WIDTH, HEIGHT, FPS, COLORS } from "./constants";
 import {
-  WIDTH,
-  HEIGHT,
-  FPS,
-  COLORS,
-} from "./constants";
+  SinglePlayerMode,
+  TwoPlayerMode,
+  type GameModeStrategy,
+} from "./modes";
 
 export class Game {
   private ctx: CanvasRenderingContext2D;
   private state: GameState = "title";
-  private menuSelection = 0; // 0 = Start, 1 = Help
+  private menuSelection = 0; // 0 = 1P, 1 = 2P, 2 = Help
+  private gameMode: GameMode = "single";
   private board: GameBoard;
+  private modeStrategy: GameModeStrategy | null = null;
 
   // Input state for edge detection
   private prevInputs = {
@@ -41,7 +43,7 @@ export class Game {
     // Initialize shape cache
     shapeRenderer.init();
 
-    // Create initial board
+    // Create initial board (will be replaced when game starts)
     this.board = new GameBoard();
   }
 
@@ -54,7 +56,7 @@ export class Game {
 
     let current = false;
     if (key === "start") {
-      current = sys.start_1p;
+      current = sys.start_1p || sys.start_2p;
     } else if (key === "up") {
       current = p1.up;
     } else if (key === "down") {
@@ -81,7 +83,7 @@ export class Game {
       down: p1.down,
       a: p1.a,
       b: p1.b,
-      start: sys.start_1p,
+      start: sys.start_1p || sys.start_2p,
     };
   }
 
@@ -106,25 +108,46 @@ export class Game {
   }
 
   private updateTitle(inputs: GameInput): void {
-    // Menu navigation
+    // Menu navigation (3 items now)
     if (this.edgeTriggered("up", inputs)) {
-      this.menuSelection = (this.menuSelection - 1 + 2) % 2;
+      this.menuSelection = (this.menuSelection - 1 + 3) % 3;
     }
     if (this.edgeTriggered("down", inputs)) {
-      this.menuSelection = (this.menuSelection + 1) % 2;
+      this.menuSelection = (this.menuSelection + 1) % 3;
     }
 
     // Selection
     if (this.edgeTriggered("a", inputs) || this.edgeTriggered("start", inputs)) {
       if (this.menuSelection === 0) {
-        this.state = "playing";
-        this.board = new GameBoard(inputs.p1);
+        this.startGame("single");
+      } else if (this.menuSelection === 1) {
+        this.startGame("two_player");
       } else {
         this.state = "help";
       }
     }
 
     this.updatePrevInputs(inputs);
+  }
+
+  private startGame(mode: GameMode): void {
+    this.gameMode = mode;
+
+    // Create a new board
+    this.board = new GameBoard();
+
+    // Create appropriate strategy
+    if (mode === "single") {
+      this.modeStrategy = new SinglePlayerMode(this.board);
+    } else {
+      this.modeStrategy = new TwoPlayerMode(this.board);
+    }
+
+    // Inject strategy into board
+    this.board.setModeStrategy(this.modeStrategy);
+    this.modeStrategy.init();
+
+    this.state = "playing";
   }
 
   private updateHelp(inputs: GameInput): void {
@@ -140,17 +163,20 @@ export class Game {
   }
 
   private updatePlaying(inputs: GameInput): void {
-    this.board.update(inputs.p1);
+    if (this.modeStrategy) {
+      this.modeStrategy.update(inputs);
 
-    if (this.board.gameOver) {
-      this.state = "game_over";
+      if (this.modeStrategy.isGameOver()) {
+        this.state = "game_over";
+      }
     }
   }
 
   private updateGameOver(inputs: GameInput): void {
     if (this.edgeTriggered("start", inputs) || this.edgeTriggered("a", inputs)) {
-      this.board = new GameBoard(inputs.p1);
-      this.state = "playing";
+      // Return to title screen
+      this.state = "title";
+      this.menuSelection = 0;
     }
     this.updatePrevInputs(inputs);
   }
@@ -187,17 +213,17 @@ export class Game {
     ctx.font = "bold 36px monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("SET", WIDTH / 2, HEIGHT / 2 - 50);
+    ctx.fillText("SET", WIDTH / 2, HEIGHT / 2 - 60);
 
     // Menu options
-    const menuItems = ["Start Game", "How to Play"];
-    ctx.font = "24px monospace";
+    const menuItems = ["1 Player", "2 Players", "How to Play"];
+    ctx.font = "20px monospace";
 
     for (let i = 0; i < menuItems.length; i++) {
       const isSelected = i === this.menuSelection;
       ctx.fillStyle = isSelected ? COLORS.selectedBorder : COLORS.white;
       const prefix = isSelected ? "> " : "  ";
-      ctx.fillText(`${prefix}${menuItems[i]}`, WIDTH / 2, HEIGHT / 2 + i * 25);
+      ctx.fillText(`${prefix}${menuItems[i]}`, WIDTH / 2, HEIGHT / 2 - 10 + i * 28);
     }
 
     // Controls hint
@@ -226,11 +252,9 @@ export class Game {
       "count, fill), all 3 cards must be:",
       "  ALL THE SAME  or  ALL DIFFERENT",
       "",
-      "Example valid SET:",
-      "  1 red solid diamond",
-      "  2 red solid ovals",
-      "  3 red solid squiggles",
-      "  (same color/fill, diff count/shape)",
+      "1 Player: Race against the clock!",
+      "2 Players: Press A to declare,",
+      "  then pick your set in 3.3s!",
     ];
 
     ctx.fillStyle = COLORS.white;
@@ -249,7 +273,7 @@ export class Game {
     // Controls
     ctx.fillStyle = COLORS.textMuted;
     ctx.textAlign = "center";
-    ctx.fillText("D-Pad: Move  A: Select  (3 cards = check)", WIDTH / 2, y);
+    ctx.fillText("D-Pad: Move  A: Select/Declare", WIDTH / 2, y);
 
     // Back hint
     ctx.fillText("Press any button to return", WIDTH / 2, HEIGHT - 15);
@@ -261,36 +285,42 @@ export class Game {
     // Draw the board
     this.board.draw(ctx);
 
-    // Score in top left
-    ctx.fillStyle = COLORS.white;
-    ctx.font = "20px monospace";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.fillText(`Sets: ${this.board.score}`, 10, 10);
-
-    // Deck remaining in top right
-    ctx.fillStyle = COLORS.textMuted;
-    ctx.font = "14px monospace";
-    ctx.textAlign = "right";
-    ctx.fillText(`Deck: ${this.board.deck.length}`, WIDTH - 10, 12);
+    // Draw mode-specific HUD
+    if (this.modeStrategy) {
+      this.modeStrategy.drawHUD(ctx);
+    }
   }
 
   private drawGameOver(): void {
     const ctx = this.ctx;
 
+    if (!this.modeStrategy) return;
+
+    const data = this.modeStrategy.getGameOverData();
+
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    // Congratulations
+    // Title
     ctx.fillStyle = COLORS.selectedBorder;
     ctx.font = "bold 24px monospace";
-    ctx.fillText("Congratulations!", WIDTH / 2, HEIGHT / 2 - 40);
-    ctx.fillText("You WON!", WIDTH / 2, HEIGHT / 2 - 10);
+    ctx.fillText(data.title, WIDTH / 2, HEIGHT / 2 - 50);
+
+    // Subtitle
+    ctx.fillStyle = COLORS.white;
+    ctx.font = "bold 20px monospace";
+    ctx.fillText(data.subtitle, WIDTH / 2, HEIGHT / 2 - 20);
+
+    // Stats
+    ctx.font = "16px monospace";
+    data.stats.forEach((stat, i) => {
+      ctx.fillText(stat, WIDTH / 2, HEIGHT / 2 + 15 + i * 22);
+    });
 
     // Restart hint
     ctx.fillStyle = COLORS.textMuted;
-    ctx.font = "20px monospace";
-    ctx.fillText("Press A or START to play again", WIDTH / 2, HEIGHT / 2 + 55);
+    ctx.font = "14px monospace";
+    ctx.fillText("Press A or START to continue", WIDTH / 2, HEIGHT / 2 + 80);
   }
 
   /**

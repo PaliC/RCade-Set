@@ -1,9 +1,10 @@
 /**
- * GameBoard class - manages the game board, deck, and gameplay logic
+ * GameBoard class - manages the game board, deck, and core gameplay logic
+ * Mode-specific behavior is delegated to a GameModeStrategy
  */
 
 import { Card } from "./Card";
-import type { PlayerInput, FlipAnimation, Position } from "./types";
+import type { FlipAnimation, Position } from "./types";
 import { positionKey, parsePositionKey } from "./types";
 import {
   GRID_COLS,
@@ -21,14 +22,17 @@ import {
   FLASH_DURATION,
   FLIP_DURATION,
 } from "./constants";
+import type {
+  GameModeStrategy,
+  CursorInfo,
+  SelectionInfo,
+  SetAttemptResult,
+} from "./modes/GameModeStrategy";
 
 export class GameBoard {
   // Game state
   deck: Card[] = [];
   cards: (Card | null)[][] = [];
-  selected: Set<string> = new Set(); // Set of position keys "row,col"
-  cursorRow = 0;
-  cursorCol = 0;
   score = 0;
   gameOver = false;
   debugMode = true;
@@ -41,35 +45,24 @@ export class GameBoard {
   // Animations
   flipAnimations: Map<string, FlipAnimation> = new Map();
 
-  // Input state for edge detection
-  private prevInputs: Record<string, boolean> = {
-    up: false,
-    down: false,
-    left: false,
-    right: false,
-    a: false,
-  };
+  // Mode strategy (set after construction)
+  private modeStrategy: GameModeStrategy | null = null;
 
-  constructor(initialInputs?: PlayerInput) {
+  constructor() {
     this.deck = this.createDeck();
     this.shuffleDeck();
     this.cards = Array.from({ length: GRID_ROWS }, () =>
       Array.from({ length: GRID_COLS }, () => null)
     );
     this.dealInitialCards();
-
-    // Initialize with current input state to prevent accidental selection on first frame
-    if (initialInputs) {
-      this.prevInputs = {
-        up: initialInputs.up,
-        down: initialInputs.down,
-        left: initialInputs.left,
-        right: initialInputs.right,
-        a: initialInputs.a,
-      };
-    }
-
     this.printValidSets();
+  }
+
+  /**
+   * Set the mode strategy for this board
+   */
+  setModeStrategy(strategy: GameModeStrategy): void {
+    this.modeStrategy = strategy;
   }
 
   /**
@@ -116,7 +109,7 @@ export class GameBoard {
   /**
    * Ensure at least one valid set exists on the board by swapping cards with deck.
    */
-  private ensureValidSetExists(): void {
+  ensureValidSetExists(): void {
     const maxAttempts = 1000;
     let attempts = 0;
 
@@ -237,83 +230,65 @@ export class GameBoard {
   }
 
   /**
-   * Update game state based on player input.
+   * Move cursor in a direction, wrapping at edges
    */
-  update(inputs: PlayerInput): void {
-    // Update flash timer
-    if (this.flashTimer > 0) {
-      this.flashTimer--;
-      if (this.flashTimer === 0) {
-        this.flashColor = null;
-        this.flashPositions.clear();
-      }
+  moveCursor(position: Position, direction: "up" | "down" | "left" | "right"): Position {
+    let { row, col } = position;
+    switch (direction) {
+      case "up":
+        row = (row - 1 + GRID_ROWS) % GRID_ROWS;
+        break;
+      case "down":
+        row = (row + 1) % GRID_ROWS;
+        break;
+      case "left":
+        col = (col - 1 + GRID_COLS) % GRID_COLS;
+        break;
+      case "right":
+        col = (col + 1) % GRID_COLS;
+        break;
     }
-
-    // Update flip animations
-    const completedAnims: string[] = [];
-    for (const [key, anim] of this.flipAnimations) {
-      anim.progress += 1.0 / FLIP_DURATION;
-      if (anim.progress >= 1.0) {
-        completedAnims.push(key);
-      }
-    }
-    for (const key of completedAnims) {
-      this.flipAnimations.delete(key);
-    }
-
-    // Cursor movement (edge-triggered)
-    if (inputs.up && !this.prevInputs.up) {
-      this.cursorRow = (this.cursorRow - 1 + GRID_ROWS) % GRID_ROWS;
-    }
-    if (inputs.down && !this.prevInputs.down) {
-      this.cursorRow = (this.cursorRow + 1) % GRID_ROWS;
-    }
-    if (inputs.left && !this.prevInputs.left) {
-      this.cursorCol = (this.cursorCol - 1 + GRID_COLS) % GRID_COLS;
-    }
-    if (inputs.right && !this.prevInputs.right) {
-      this.cursorCol = (this.cursorCol + 1) % GRID_COLS;
-    }
-
-    // Card selection with A button
-    if (inputs.a && !this.prevInputs.a) {
-      const key = positionKey(this.cursorRow, this.cursorCol);
-
-      if (this.selected.has(key)) {
-        this.selected.delete(key);
-      } else if (this.selected.size < 3 && this.cards[this.cursorRow][this.cursorCol] !== null) {
-        this.selected.add(key);
-
-        // Check if we have exactly 3 cards selected
-        if (this.selected.size === 3) {
-          this.checkSet();
-        }
-      }
-    }
-
-    // Update previous input state
-    this.prevInputs = {
-      up: inputs.up,
-      down: inputs.down,
-      left: inputs.left,
-      right: inputs.right,
-      a: inputs.a,
-    };
+    return { row, col };
   }
 
   /**
-   * Check if the 3 selected cards form a valid set.
+   * Toggle selection of a card at a position.
+   * Returns the new selection array.
    */
-  private checkSet(): void {
-    const positions = Array.from(this.selected).map(parsePositionKey);
+  toggleSelection(currentSelection: Position[], position: Position): Position[] {
+    const key = positionKey(position.row, position.col);
+    const existingIndex = currentSelection.findIndex(
+      (p) => positionKey(p.row, p.col) === key
+    );
+
+    if (existingIndex >= 0) {
+      // Deselect
+      return currentSelection.filter((_, i) => i !== existingIndex);
+    } else if (currentSelection.length < 3 && this.cards[position.row][position.col] !== null) {
+      // Select
+      return [...currentSelection, position];
+    }
+    return currentSelection;
+  }
+
+  /**
+   * Check if selected positions form a valid set.
+   * Handles animations, card replacement, and returns result for mode to handle scoring.
+   */
+  checkSetAtPositions(positions: Position[]): SetAttemptResult {
+    if (positions.length !== 3) {
+      return { valid: false, positions };
+    }
+
     const cards = positions.map((p) => this.cards[p.row][p.col]!);
 
-    // Store positions for flashing before clearing selected
-    this.flashPositions = new Set(this.selected);
+    // Store positions for flashing
+    this.flashPositions = new Set(positions.map((p) => positionKey(p.row, p.col)));
     this.flashTimer = FLASH_DURATION;
 
-    if (Card.checkSet(cards[0], cards[1], cards[2])) {
-      // Valid set!
+    const isValid = Card.checkSet(cards[0], cards[1], cards[2]);
+
+    if (isValid) {
       this.flashColor = COLORS.flashGreen;
       this.score++;
 
@@ -346,22 +321,61 @@ export class GameBoard {
 
       this.printValidSets();
 
-      // Check for game over
+      // Check for game over (deck empty and no valid sets)
       if (this.deck.length === 0 && !this.hasValidSet()) {
         this.gameOver = true;
       }
     } else {
-      // Invalid set
       this.flashColor = COLORS.flashRed;
     }
 
-    this.selected.clear();
+    return { valid: isValid, positions };
   }
 
   /**
-   * Draw the game board.
+   * Update animations each frame
+   */
+  updateAnimations(): void {
+    // Update flash timer
+    if (this.flashTimer > 0) {
+      this.flashTimer--;
+      if (this.flashTimer === 0) {
+        this.flashColor = null;
+        this.flashPositions.clear();
+      }
+    }
+
+    // Update flip animations
+    const completedAnims: string[] = [];
+    for (const [key, anim] of this.flipAnimations) {
+      anim.progress += 1.0 / FLIP_DURATION;
+      if (anim.progress >= 1.0) {
+        completedAnims.push(key);
+      }
+    }
+    for (const key of completedAnims) {
+      this.flipAnimations.delete(key);
+    }
+  }
+
+  /**
+   * Draw the game board with cursors and selections from the mode strategy
    */
   draw(ctx: CanvasRenderingContext2D): void {
+    const cursors = this.modeStrategy?.getCursors() ?? [];
+    const selections = this.modeStrategy?.getSelections() ?? [];
+
+    // Build lookup maps for efficient rendering
+    const cursorMap = new Map<string, CursorInfo>();
+    for (const cursor of cursors) {
+      cursorMap.set(positionKey(cursor.position.row, cursor.position.col), cursor);
+    }
+
+    const selectionMap = new Map<string, SelectionInfo>();
+    for (const sel of selections) {
+      selectionMap.set(positionKey(sel.position.row, sel.position.col), sel);
+    }
+
     for (let row = 0; row < GRID_ROWS; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
         const key = positionKey(row, col);
@@ -407,14 +421,14 @@ export class GameBoard {
 
         if (card === null) continue;
 
-        const isSelected = this.selected.has(key);
-        const isCursor = row === this.cursorRow && col === this.cursorCol;
+        const cursorInfo = cursorMap.get(key);
+        const selectionInfo = selectionMap.get(key);
         const isFlashing = this.flashPositions.has(key);
 
         // Card background
-        if (isCursor) {
+        if (cursorInfo) {
           ctx.fillStyle = COLORS.cardBgHover;
-        } else if (isSelected) {
+        } else if (selectionInfo) {
           ctx.fillStyle = COLORS.cardBgSelected;
         } else {
           ctx.fillStyle = COLORS.cardBg;
@@ -425,12 +439,12 @@ export class GameBoard {
         if (this.flashColor && isFlashing) {
           ctx.strokeStyle = this.flashColor;
           ctx.lineWidth = 3;
-        } else if (isSelected) {
-          ctx.strokeStyle = COLORS.selectedBorder;
+        } else if (selectionInfo) {
+          ctx.strokeStyle = selectionInfo.color;
           ctx.lineWidth = 3;
-        } else if (isCursor) {
-          ctx.strokeStyle = COLORS.cursorColor;
-          ctx.lineWidth = 2;
+        } else if (cursorInfo) {
+          ctx.strokeStyle = cursorInfo.color;
+          ctx.lineWidth = cursorInfo.active ? 2 : 1;
         } else {
           ctx.strokeStyle = COLORS.cardBorder;
           ctx.lineWidth = 1;
