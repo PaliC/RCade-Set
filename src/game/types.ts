@@ -19,6 +19,20 @@ export interface CardData {
 // Game states
 export type GameState = "title" | "help" | "playing" | "game_over";
 
+// Game modes
+export type GameMode = "single" | "two_player";
+
+// Two-player phase states
+export type TwoPlayerPhase = "open" | "declaring";
+
+// Player state for two-player mode
+export interface PlayerState {
+  lives: number;
+  score: number;
+  cursorPosition: Position;
+  selectedCards: Position[];
+}
+
 // Grid position
 export interface Position {
   row: number;

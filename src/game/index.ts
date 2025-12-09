@@ -8,3 +8,4 @@ export { Card } from "./Card";
 export { shapeRenderer } from "./ShapeRenderer";
 export * from "./types";
 export * from "./constants";
+export * from "./modes";
