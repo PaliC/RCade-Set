@@ -6,11 +6,13 @@
       "name": "set",
       "dependencies": {
         "@rcade/plugin-input-classic": "^0.2.1",
+        "p5": "^1.11.3",
       },
       "devDependencies": {
+        "@types/p5": "^1.7.6",
         "concurrently": "^9.0.0",
-        "rcade": "^0.0.38",
-        "typescript": "^5.3.0",
+        "rcade": "^0.0.40",
+        "typescript": "^5.8.0",
         "vite": "^7.2.4",
         "vitest": "^3.2.4",
       },
@@ -165,6 +167,8 @@
 
     "@types/estree": ["@types/estree@1.0.8", "", {}, ""],
 
+    "@types/p5": ["@types/p5@1.7.7", "", {}, "sha512-WFuP7jqc5CkkMtCK/NphgvMnJz1Qi9CMuK7t6xLu/tuXkRdGQA4q4AD0dUYcChC0Oibe8PE8gbKSFPNF0BqVNw=="],
+
     "@types/semver": ["@types/semver@7.7.1", "", {}, ""],
 
     "@vitest/expect": ["@vitest/expect@3.2.4", "", { "dependencies": { "@types/chai": "^5.2.2", "@vitest/spy": "3.2.4", "@vitest/utils": "3.2.4", "chai": "^5.2.0", "tinyrainbow": "^2.0.0" } }, "sha512-Io0yyORnB6sikFlt8QW5K7slY4OjqNX9jmJQ02QDda8lyM6B5oNgVWoSoKPac8/kgnCUzuHQKrSLtu/uOqqrig=="],
@@ -297,6 +301,8 @@
 
     "omggif": ["omggif@1.0.10", "", {}, ""],
 
+    "p5": ["p5@1.11.11", "", {}, "sha512-k58mfexvavFb+KNRpi70PbkKE2gCNiWQkzS4kVOyC2F9SKGgYy1jSO+JXZ24ikXV9OvZIAxGusiSVWEijYrmNg=="],
+
     "parse-ms": ["parse-ms@4.0.0", "", {}, ""],
 
     "path-key": ["path-key@3.1.1", "", {}, ""],
@@ -315,7 +321,7 @@
 
     "pretty-ms": ["pretty-ms@9.3.0", "", { "dependencies": { "parse-ms": "^4.0.0" } }, ""],
 
-    "rcade": ["rcade@0.0.38", "", { "dependencies": { "@badgateway/oauth2-client": "^3.3.1", "@inquirer/prompts": "^7.2.0", "@types/semver": "^7.7.1", "commander": "^14.0.2", "execa": "^9.6.0", "fdir": "^6.5.0", "js-yaml": "^4.1.1", "mustache": "^4.2.0", "semver": "^7.7.3", "terminal-kit": "^3.1.2" }, "peerDependencies": { "typescript": "^5" }, "bin": "dist/bin.js" }, ""],
+    "rcade": ["rcade@0.0.40", "", { "dependencies": { "@badgateway/oauth2-client": "^3.3.1", "@inquirer/prompts": "^7.2.0", "@types/semver": "^7.7.1", "commander": "^14.0.2", "execa": "^9.6.0", "fdir": "^6.5.0", "js-yaml": "^4.1.1", "mustache": "^4.2.0", "semver": "^7.7.3", "terminal-kit": "^3.1.2" }, "peerDependencies": { "typescript": "^5" }, "bin": { "rcade": "dist/bin.js" } }, "sha512-ZHz+RO8eJW1vpC8eoHe/Y3k8kJlFIdUrE+v50fgjlXtbCQsmMtg2JKzuSlZbvjqHW0fbG34Kb6WHelG5D2IZLA=="],
 
     "require-directory": ["require-directory@2.1.1", "", {}, ""],
 

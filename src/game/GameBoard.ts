@@ -2,6 +2,7 @@
  * GameBoard class - manages the game board, deck, and gameplay logic
  */
 
+import type p5 from "p5";
 import { Card } from "./Card";
 import type { PlayerInput, FlipAnimation, Position } from "./types";
 import { positionKey, parsePositionKey } from "./types";
@@ -359,9 +360,9 @@ export class GameBoard {
   }
 
   /**
-   * Draw the game board.
+   * Draw the game board using p5.
    */
-  draw(ctx: CanvasRenderingContext2D): void {
+  draw(p: p5): void {
     for (let row = 0; row < GRID_ROWS; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
         const key = positionKey(row, col);
@@ -412,33 +413,40 @@ export class GameBoard {
         const isFlashing = this.flashPositions.has(key);
 
         // Card background
+        let bgColor: string;
         if (isCursor) {
-          ctx.fillStyle = COLORS.cardBgHover;
+          bgColor = COLORS.cardBgHover;
         } else if (isSelected) {
-          ctx.fillStyle = COLORS.cardBgSelected;
+          bgColor = COLORS.cardBgSelected;
         } else {
-          ctx.fillStyle = COLORS.cardBg;
+          bgColor = COLORS.cardBg;
         }
-        ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
 
         // Card border
+        let borderColor: string;
+        let lineWidth: number;
         if (this.flashColor && isFlashing) {
-          ctx.strokeStyle = this.flashColor;
-          ctx.lineWidth = 3;
+          borderColor = this.flashColor;
+          lineWidth = 3;
         } else if (isSelected) {
-          ctx.strokeStyle = COLORS.selectedBorder;
-          ctx.lineWidth = 3;
+          borderColor = COLORS.selectedBorder;
+          lineWidth = 3;
         } else if (isCursor) {
-          ctx.strokeStyle = COLORS.cursorColor;
-          ctx.lineWidth = 2;
+          borderColor = COLORS.cursorColor;
+          lineWidth = 2;
         } else {
-          ctx.strokeStyle = COLORS.cardBorder;
-          ctx.lineWidth = 1;
+          borderColor = COLORS.cardBorder;
+          lineWidth = 1;
         }
-        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+
+        // Draw card background and border
+        p.fill(bgColor);
+        p.stroke(borderColor);
+        p.strokeWeight(lineWidth);
+        p.rect(rect.x, rect.y, rect.width, rect.height);
 
         // Draw card shapes
-        card.draw(ctx, rect.x, rect.y, rect.width, rect.height);
+        card.draw(p, rect.x, rect.y, rect.width, rect.height);
       }
     }
   }

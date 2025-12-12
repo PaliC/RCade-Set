@@ -3,19 +3,23 @@
  * All 27 shape combinations (3 shapes x 3 colors x 3 fills) are rendered once at startup.
  */
 
+import type p5 from "p5";
 import type { Shape, Color, Fill } from "./types";
 import { PIXEL_SHAPES, SHAPE_COLORS, SHAPES, CARD_COLORS, FILLS, SHAPE_SIZE } from "./constants";
 
 class ShapeRenderer {
-  private cache: Map<string, OffscreenCanvas> = new Map();
+  private cache: Map<string, p5.Graphics> = new Map();
   private initialized = false;
+  private p5Instance: p5 | null = null;
 
   /**
    * Initialize the shape cache by pre-rendering all shape combinations.
    * Must be called before any shapes can be drawn.
    */
-  init(): void {
+  init(p: p5): void {
     if (this.initialized) return;
+
+    this.p5Instance = p;
 
     for (const shape of SHAPES) {
       for (const color of CARD_COLORS) {
@@ -33,7 +37,7 @@ class ShapeRenderer {
   /**
    * Get a pre-rendered shape surface.
    */
-  getShape(shape: Shape, color: Color, fill: Fill): OffscreenCanvas | undefined {
+  getShape(shape: Shape, color: Color, fill: Fill): p5.Graphics | undefined {
     return this.cache.get(this.getKey(shape, color, fill));
   }
 
@@ -44,20 +48,22 @@ class ShapeRenderer {
   /**
    * Create a single shape surface with the given color and fill.
    */
-  private createShapeSurface(shape: Shape, color: Color, fill: Fill): OffscreenCanvas {
+  private createShapeSurface(shape: Shape, color: Color, fill: Fill): p5.Graphics {
     const shapeData = PIXEL_SHAPES[shape];
     const colorHex = SHAPE_COLORS[color];
 
-    const canvas = new OffscreenCanvas(SHAPE_SIZE, SHAPE_SIZE);
-    const ctx = canvas.getContext("2d")!;
+    const graphics = this.p5Instance!.createGraphics(SHAPE_SIZE, SHAPE_SIZE);
 
     // Parse color hex to RGB for pixel manipulation
     const r = parseInt(colorHex.slice(1, 3), 16);
     const g = parseInt(colorHex.slice(3, 5), 16);
     const b = parseInt(colorHex.slice(5, 7), 16);
 
-    const imageData = ctx.createImageData(SHAPE_SIZE, SHAPE_SIZE);
-    const data = imageData.data;
+    // Load pixel array for direct manipulation
+    graphics.loadPixels();
+    const d = graphics.pixelDensity();
+    const pixelWidth = SHAPE_SIZE * d;
+    const pixelHeight = SHAPE_SIZE * d;
 
     for (let py = 0; py < SHAPE_SIZE; py++) {
       for (let px = 0; px < SHAPE_SIZE; px++) {
@@ -75,18 +81,25 @@ class ShapeRenderer {
           }
 
           if (shouldDraw) {
-            const i = (py * SHAPE_SIZE + px) * 4;
-            data[i] = r;
-            data[i + 1] = g;
-            data[i + 2] = b;
-            data[i + 3] = 255; // Full alpha
+            // For high density displays, we need to fill multiple pixels
+            for (let dy = 0; dy < d; dy++) {
+              for (let dx = 0; dx < d; dx++) {
+                const pixelX = px * d + dx;
+                const pixelY = py * d + dy;
+                const i = (pixelY * pixelWidth + pixelX) * 4;
+                graphics.pixels[i] = r;
+                graphics.pixels[i + 1] = g;
+                graphics.pixels[i + 2] = b;
+                graphics.pixels[i + 3] = 255; // Full alpha
+              }
+            }
           }
         }
       }
     }
 
-    ctx.putImageData(imageData, 0, 0);
-    return canvas;
+    graphics.updatePixels();
+    return graphics;
   }
 
   /**
