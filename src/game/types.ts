@@ -58,6 +58,28 @@ export function positionKey(row: number, col: number): string {
   return `${row},${col}`;
 }
 
+/**
+ * Merge P1 and P2 inputs so either player can control the game.
+ * Returns true for a button if either player is pressing it.
+ */
+export function mergePlayerInputs(p1: PlayerInput, p2: PlayerInput): PlayerInput {
+  return {
+    up: p1.up || p2.up,
+    down: p1.down || p2.down,
+    left: p1.left || p2.left,
+    right: p1.right || p2.right,
+    a: p1.a || p2.a,
+    b: p1.b || p2.b,
+  };
+}
+
+/**
+ * Check if either start button is pressed.
+ */
+export function isStartPressed(system: SystemInput): boolean {
+  return system.start_1p || system.start_2p;
+}
+
 export function parsePositionKey(key: string): Position {
   const [row, col] = key.split(",").map(Number);
   return { row, col };
