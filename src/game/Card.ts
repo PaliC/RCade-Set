@@ -2,6 +2,7 @@
  * Card class representing a single Set card
  */
 
+import type p5 from "p5";
 import type { CardData, Shape, Color, Count, Fill } from "./types";
 import { shapeRenderer } from "./ShapeRenderer";
 import { CARD_WIDTH, CARD_HEIGHT, SHAPE_SIZE, SHAPE_SPACING } from "./constants";
@@ -49,10 +50,10 @@ export class Card {
   }
 
   /**
-   * Draw this card's shapes on the canvas.
+   * Draw this card's shapes using p5.
    */
   draw(
-    ctx: CanvasRenderingContext2D,
+    p: p5,
     x: number,
     y: number,
     width: number = CARD_WIDTH,
@@ -69,7 +70,7 @@ export class Card {
 
     for (let i = 0; i < this.count; i++) {
       const sx = startX + i * SHAPE_SPACING;
-      ctx.drawImage(shapeSurface, sx, centerY);
+      p.image(shapeSurface, sx, centerY);
     }
   }
 
