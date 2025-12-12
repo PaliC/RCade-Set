@@ -3,7 +3,8 @@
  */
 
 import { GameBoard } from "./GameBoard";
-import type { GameState, GameInput } from "./types";
+import type { GameState, GameInput, PlayerInput } from "./types";
+import { mergePlayerInputs, isStartPressed } from "./types";
 import { shapeRenderer } from "./ShapeRenderer";
 import {
   WIDTH,
@@ -46,23 +47,33 @@ export class Game {
   }
 
   /**
+   * Get merged player inputs (either P1 or P2 can control).
+   */
+  private getMergedInputs(inputs: GameInput): PlayerInput & { start: boolean } {
+    const merged = mergePlayerInputs(inputs.p1, inputs.p2);
+    return {
+      ...merged,
+      start: isStartPressed(inputs.system),
+    };
+  }
+
+  /**
    * Check if a key was just pressed (edge-triggered).
    */
   private edgeTriggered(key: string, inputs: GameInput): boolean {
-    const p1 = inputs.p1;
-    const sys = inputs.system;
+    const merged = this.getMergedInputs(inputs);
 
     let current = false;
     if (key === "start") {
-      current = sys.start_1p;
+      current = merged.start;
     } else if (key === "up") {
-      current = p1.up;
+      current = merged.up;
     } else if (key === "down") {
-      current = p1.down;
+      current = merged.down;
     } else if (key === "a") {
-      current = p1.a;
+      current = merged.a;
     } else if (key === "b") {
-      current = p1.b;
+      current = merged.b;
     }
 
     const prev = this.prevInputs[key as keyof typeof this.prevInputs] ?? false;
@@ -73,15 +84,14 @@ export class Game {
    * Update previous input state for edge detection.
    */
   private updatePrevInputs(inputs: GameInput): void {
-    const p1 = inputs.p1;
-    const sys = inputs.system;
+    const merged = this.getMergedInputs(inputs);
 
     this.prevInputs = {
-      up: p1.up,
-      down: p1.down,
-      a: p1.a,
-      b: p1.b,
-      start: sys.start_1p,
+      up: merged.up,
+      down: merged.down,
+      a: merged.a,
+      b: merged.b,
+      start: merged.start,
     };
   }
 
@@ -118,7 +128,8 @@ export class Game {
     if (this.edgeTriggered("a", inputs) || this.edgeTriggered("start", inputs)) {
       if (this.menuSelection === 0) {
         this.state = "playing";
-        this.board = new GameBoard(inputs.p1);
+        const merged = mergePlayerInputs(inputs.p1, inputs.p2);
+        this.board = new GameBoard(merged);
       } else {
         this.state = "help";
       }
@@ -140,7 +151,8 @@ export class Game {
   }
 
   private updatePlaying(inputs: GameInput): void {
-    this.board.update(inputs.p1);
+    const merged = mergePlayerInputs(inputs.p1, inputs.p2);
+    this.board.update(merged);
 
     if (this.board.gameOver) {
       this.state = "game_over";
@@ -149,7 +161,8 @@ export class Game {
 
   private updateGameOver(inputs: GameInput): void {
     if (this.edgeTriggered("start", inputs) || this.edgeTriggered("a", inputs)) {
-      this.board = new GameBoard(inputs.p1);
+      const merged = mergePlayerInputs(inputs.p1, inputs.p2);
+      this.board = new GameBoard(merged);
       this.state = "playing";
     }
     this.updatePrevInputs(inputs);
