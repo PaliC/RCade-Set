@@ -73,8 +73,8 @@ class ShapeRenderer {
           if (fill === "solid") {
             shouldDraw = true;
           } else if (fill === "striped") {
-            // Draw every other row
-            shouldDraw = py % 2 === 0;
+            // Draw thicker stripes with more spacing (2px on, 3px off)
+            shouldDraw = py % 5 < 2;
           } else if (fill === "empty") {
             // Draw only edge pixels
             shouldDraw = this.isEdgePixel(shapeData, px, py);
