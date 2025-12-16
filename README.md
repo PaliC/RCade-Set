@@ -34,68 +34,59 @@ Output goes to `dist/` and is ready for deployment.
 
 ```
 ├── src/
-│   ├── game.py       # Pygame game code
-│   ├── main.js       # JavaScript entry point
+│   ├── sketch.ts     # p5.js sketch (game code)
 │   └── style.css     # Styles
 ├── index.html        # HTML entry
-├── vite.config.js    # Vite config with wheel bundling
-├── rcade.manifest.json  # RCade game metadata
+├── tsconfig.json     # TypeScript config
 └── package.json
 ```
 
-## Adding Python Dependencies
+## p5.js Basics
 
-Add dependencies to the PEP 723 script metadata in `src/game.py`:
+The template uses p5.js in [instance mode](https://github.com/processing/p5.js/wiki/Global-and-instance-mode) with TypeScript:
 
-```python
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#     "pygame-ce",
-#     "numpy",
-# ]
-# ///
+```ts
+import p5 from "p5";
+
+const sketch = (p: p5) => {
+    p.setup = () => {
+        p.createCanvas(336, 262);  // RCade dimensions
+    };
+
+    p.draw = () => {
+        p.background(26, 26, 46);
+        p.fill(255);
+        p.ellipse(p.width / 2, p.height / 2, 50, 50);
+    };
+};
+
+new p5(sketch, document.getElementById("sketch")!);
 ```
-
-The build system automatically downloads wheels from the [Pyodide package index](https://pyodide.org/en/stable/usage/packages-in-pyodide.html). Only packages available in Pyodide are supported.
 
 ## Arcade Controls
 
 This template uses `@rcade/plugin-input-classic` for arcade input:
 
-```python
-inputs = _get_input().to_py()
+```ts
+import { PLAYER_1, SYSTEM } from '@rcade/plugin-input-classic'
 
-# Player 1
-if inputs["p1"]["up"]: ...
-if inputs["p1"]["down"]: ...
-if inputs["p1"]["left"]: ...
-if inputs["p1"]["right"]: ...
-if inputs["p1"]["a"]: ...
-if inputs["p1"]["b"]: ...
+// D-pad
+if (PLAYER_1.DPAD.up) { /* ... */ }
+if (PLAYER_1.DPAD.down) { /* ... */ }
+if (PLAYER_1.DPAD.left) { /* ... */ }
+if (PLAYER_1.DPAD.right) { /* ... */ }
 
-# Player 2
-if inputs["p2"]["up"]: ...
-if inputs["p2"]["a"]: ...
-# ... same structure as p1
+// Buttons
+if (PLAYER_1.A) { /* ... */ }
+if (PLAYER_1.B) { /* ... */ }
 
-# System
-if inputs["system"]["start_1p"]: ...
-if inputs["system"]["start_2p"]: ...
+// System
+if (SYSTEM.ONE_PLAYER) { /* Start game */ }
 ```
 
-Keyboard mapping for development:
+## RCade Screen Size
 
-| Action | Player 1 | Player 2 |
-|--------|----------|----------|
-| D-pad Up | W | Arrow Up |
-| D-pad Down | S | Arrow Down |
-| D-pad Left | A | Arrow Left |
-| D-pad Right | D | Arrow Right |
-| A Button | F | . |
-| B Button | G | / |
-| 1P Start | 1 | - |
-| 2P Start | 2 | - |
+The RCade cabinet uses a 336x262 pixel display. The template is pre-configured with these dimensions.
 
 ## Deployment
 

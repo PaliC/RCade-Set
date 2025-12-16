@@ -4,7 +4,7 @@
 
 import type p5 from "p5";
 import { Card } from "./Card";
-import type { PlayerInput, FlipAnimation, Position } from "./types";
+import type { FlipAnimation, Position, BoardDrawOptions, SetAttemptResult } from "./types";
 import { positionKey, parsePositionKey } from "./types";
 import {
   GRID_COLS,
@@ -27,10 +27,6 @@ export class GameBoard {
   // Game state
   deck: Card[] = [];
   cards: (Card | null)[][] = [];
-  selected: Set<string> = new Set(); // Set of position keys "row,col"
-  cursorRow = 0;
-  cursorCol = 0;
-  score = 0;
   gameOver = false;
   debugMode = true;
 
@@ -42,34 +38,13 @@ export class GameBoard {
   // Animations
   flipAnimations: Map<string, FlipAnimation> = new Map();
 
-  // Input state for edge detection
-  private prevInputs: Record<string, boolean> = {
-    up: false,
-    down: false,
-    left: false,
-    right: false,
-    a: false,
-  };
-
-  constructor(initialInputs?: PlayerInput) {
+  constructor() {
     this.deck = this.createDeck();
     this.shuffleDeck();
     this.cards = Array.from({ length: GRID_ROWS }, () =>
       Array.from({ length: GRID_COLS }, () => null)
     );
     this.dealInitialCards();
-
-    // Initialize with current input state to prevent accidental selection on first frame
-    if (initialInputs) {
-      this.prevInputs = {
-        up: initialInputs.up,
-        down: initialInputs.down,
-        left: initialInputs.left,
-        right: initialInputs.right,
-        a: initialInputs.a,
-      };
-    }
-
     this.printValidSets();
   }
 
@@ -238,9 +213,9 @@ export class GameBoard {
   }
 
   /**
-   * Update game state based on player input.
+   * Update animations and timers (call each frame).
    */
-  update(inputs: PlayerInput): void {
+  update(): void {
     // Update flash timer
     if (this.flashTimer > 0) {
       this.flashTimer--;
@@ -261,62 +236,27 @@ export class GameBoard {
     for (const key of completedAnims) {
       this.flipAnimations.delete(key);
     }
-
-    // Cursor movement (edge-triggered)
-    if (inputs.up && !this.prevInputs.up) {
-      this.cursorRow = (this.cursorRow - 1 + GRID_ROWS) % GRID_ROWS;
-    }
-    if (inputs.down && !this.prevInputs.down) {
-      this.cursorRow = (this.cursorRow + 1) % GRID_ROWS;
-    }
-    if (inputs.left && !this.prevInputs.left) {
-      this.cursorCol = (this.cursorCol - 1 + GRID_COLS) % GRID_COLS;
-    }
-    if (inputs.right && !this.prevInputs.right) {
-      this.cursorCol = (this.cursorCol + 1) % GRID_COLS;
-    }
-
-    // Card selection with A button
-    if (inputs.a && !this.prevInputs.a) {
-      const key = positionKey(this.cursorRow, this.cursorCol);
-
-      if (this.selected.has(key)) {
-        this.selected.delete(key);
-      } else if (this.selected.size < 3 && this.cards[this.cursorRow][this.cursorCol] !== null) {
-        this.selected.add(key);
-
-        // Check if we have exactly 3 cards selected
-        if (this.selected.size === 3) {
-          this.checkSet();
-        }
-      }
-    }
-
-    // Update previous input state
-    this.prevInputs = {
-      up: inputs.up,
-      down: inputs.down,
-      left: inputs.left,
-      right: inputs.right,
-      a: inputs.a,
-    };
   }
 
   /**
-   * Check if the 3 selected cards form a valid set.
+   * Attempt to claim a set with the given selected positions.
+   * Returns whether the set was valid and if the game is over.
    */
-  private checkSet(): void {
-    const positions = Array.from(this.selected).map(parsePositionKey);
+  trySet(selected: Set<string>): SetAttemptResult {
+    if (selected.size !== 3) {
+      return { valid: false, gameOver: false };
+    }
+
+    const positions = Array.from(selected).map(parsePositionKey);
     const cards = positions.map((p) => this.cards[p.row][p.col]!);
 
-    // Store positions for flashing before clearing selected
-    this.flashPositions = new Set(this.selected);
+    // Store positions for flashing
+    this.flashPositions = new Set(selected);
     this.flashTimer = FLASH_DURATION;
 
     if (Card.checkSet(cards[0], cards[1], cards[2])) {
       // Valid set!
       this.flashColor = COLORS.flashGreen;
-      this.score++;
 
       // Start flip animations and replace cards
       for (const pos of positions) {
@@ -348,21 +288,27 @@ export class GameBoard {
       this.printValidSets();
 
       // Check for game over
-      if (this.deck.length === 0 && !this.hasValidSet()) {
+      const isGameOver = this.deck.length === 0 && !this.hasValidSet();
+      if (isGameOver) {
         this.gameOver = true;
       }
+
+      return { valid: true, gameOver: isGameOver };
     } else {
       // Invalid set
       this.flashColor = COLORS.flashRed;
+      return { valid: false, gameOver: false };
     }
-
-    this.selected.clear();
   }
 
   /**
    * Draw the game board using p5.
+   * @param p The p5 instance
+   * @param options Optional cursor and selection state for rendering
    */
-  draw(p: p5): void {
+  draw(p: p5, options: BoardDrawOptions = {}): void {
+    const { cursor, selected } = options;
+
     for (let row = 0; row < GRID_ROWS; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
         const key = positionKey(row, col);
@@ -408,8 +354,8 @@ export class GameBoard {
 
         if (card === null) continue;
 
-        const isSelected = this.selected.has(key);
-        const isCursor = row === this.cursorRow && col === this.cursorCol;
+        const isSelected = selected?.positions.has(key) ?? false;
+        const isCursor = cursor && row === cursor.row && col === cursor.col;
         const isFlashing = this.flashPositions.has(key);
 
         // Card background
@@ -429,10 +375,10 @@ export class GameBoard {
           borderColor = this.flashColor;
           lineWidth = 3;
         } else if (isSelected) {
-          borderColor = COLORS.selectedBorder;
+          borderColor = selected?.color ?? COLORS.selectedBorder;
           lineWidth = 3;
         } else if (isCursor) {
-          borderColor = COLORS.cursorColor;
+          borderColor = cursor?.color ?? COLORS.cursorColor;
           lineWidth = 2;
         } else {
           borderColor = COLORS.cardBorder;

@@ -53,6 +53,26 @@ export const GRID_START_Y =
 // Animation durations (in frames)
 export const FLASH_DURATION = Math.floor(FPS / 2); // Half second
 export const FLIP_DURATION = Math.floor(FPS / 3); // ~20 frames
+export const DECLARE_DISPLAY_DURATION = Math.floor(FPS * 1.5); // 1.5 seconds for "P1 Declared Set" text
+
+// Versus mode constants
+export const SELECTION_TIME_SECONDS = 8.0;
+export const SELECTION_TIME_FRAMES = Math.floor(SELECTION_TIME_SECONDS * FPS); // 480 frames
+export const STARTING_LIVES = 3;
+
+// Player colors for versus mode
+export const PLAYER_COLORS = {
+  p1: {
+    cursor: "#64c8ff",    // Cyan
+    selected: "#4a90d9",  // Blue tint
+    flash: "#64c8ff",
+  },
+  p2: {
+    cursor: "#ffaa00",    // Orange
+    selected: "#d9944a",  // Orange tint
+    flash: "#ffaa00",
+  },
+} as const;
 
 // Pixel art shape definitions (22x22 grids)
 // 'X' = filled pixel, '.' = transparent

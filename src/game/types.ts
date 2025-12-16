@@ -19,6 +19,45 @@ export interface CardData {
 // Game states
 export type GameState = "title" | "help" | "playing" | "game_over";
 
+// Game modes
+export type GameMode = "single" | "versus";
+
+// Two-player phases
+export type VersusPhase = "idle" | "p1_selecting" | "p2_selecting";
+
+// Draw options for GameBoard
+export interface BoardDrawOptions {
+  cursor?: { row: number; col: number; color: string };
+  selected?: { positions: Set<string>; color: string };
+}
+
+// Result of attempting a set
+export interface SetAttemptResult {
+  valid: boolean;
+  gameOver: boolean;
+}
+
+// Versus mode player state
+export interface PlayerVersusState {
+  score: number;
+  lives: number;
+  cursorRow: number;
+  cursorCol: number;
+  selected: Set<string>;
+}
+
+// Full versus game state
+export interface VersusGameState {
+  phase: VersusPhase;
+  p1: PlayerVersusState;
+  p2: PlayerVersusState;
+  selectionTimer: number;      // Frames remaining for selection
+  declareDisplayTimer: number; // Frames remaining for "Declared Set" display
+  activePlayer: 1 | 2 | null;
+  winner: 1 | 2 | null;        // Set when game ends
+  winReason: "elimination" | "score" | null;
+}
+
 // Grid position
 export interface Position {
   row: number;
